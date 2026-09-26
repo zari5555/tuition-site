@@ -2,8 +2,8 @@ import nodemailer from "nodemailer";
 
 const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
 const smtpPort = Number(process.env.SMTP_PORT) || 465;
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS;
+const smtpUser = process.env.SMTP_USER?.trim();
+const smtpPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, "") : undefined;
 const smtpFrom = process.env.SMTP_FROM || `Tuitionss.com <${smtpUser || "noreply@tuitionss.com"}>`;
 
 const transporter = nodemailer.createTransport({
