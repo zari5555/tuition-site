@@ -1,17 +1,26 @@
 import nodemailer from "nodemailer";
 
-const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-const smtpPort = Number(process.env.SMTP_PORT) || 465;
-const smtpUser = process.env.SMTP_USER?.trim();
-const smtpPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, "") : undefined;
-const smtpFrom = process.env.SMTP_FROM || `Tuitionss.com <${smtpUser || "noreply@tuitionss.com"}>`;
+function getTransporter() {
+  const smtpHost = (process.env.SMTP_HOST || "smtp.gmail.com").replace(/['"\s]/g, "");
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+  const smtpUser = process.env.SMTP_USER?.replace(/['"\s]/g, "");
+  const smtpPass = process.env.SMTP_PASS?.replace(/['"\s]/g, "");
+  const smtpFrom = process.env.SMTP_FROM ? process.env.SMTP_FROM.replace(/['"]/g, "").trim() : `Tuitionss.com <${smtpUser || "noreply@tuitionss.com"}>`;
 
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpPort === 465, // true for 465, false for 587
-  auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
-});
+  if (!smtpUser || !smtpPass) {
+    return null;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // true for 465, false for 587
+    auth: { user: smtpUser, pass: smtpPass },
+    tls: { rejectUnauthorized: false }
+  });
+
+  return { transporter, smtpFrom, smtpUser };
+}
 
 /**
  * 1. Sent when a Student or Teacher submits an application
@@ -25,8 +34,9 @@ export async function sendApplicationReceivedEmail({
   name: string;
   role: "STUDENT" | "TEACHER";
 }) {
-  if (!smtpUser || !smtpPass) {
-    console.log(`[Email Skipped] SMTP credentials missing in .env. Target: ${to}`);
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.log(`[Email Skipped] SMTP credentials missing in env. Target: ${to}`);
     return;
   }
 
@@ -59,7 +69,7 @@ export async function sendApplicationReceivedEmail({
   `;
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
+    await mailer.transporter.sendMail({ from: mailer.smtpFrom, to, subject, html });
     console.log(`[Email Sent] Application received notification sent to ${to}`);
   } catch (error) {
     console.error(`[Email Error] Failed to send email to ${to}:`, error);
@@ -82,8 +92,9 @@ export async function sendApplicationApprovedEmail({
   email: string;
   defaultPassword?: string;
 }) {
-  if (!smtpUser || !smtpPass) {
-    console.log(`[Email Skipped] SMTP credentials missing in .env. Target: ${to}`);
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.log(`[Email Skipped] SMTP credentials missing in env. Target: ${to}`);
     return;
   }
 
@@ -123,7 +134,7 @@ export async function sendApplicationApprovedEmail({
   `;
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
+    await mailer.transporter.sendMail({ from: mailer.smtpFrom, to, subject, html });
     console.log(`[Email Sent] Application approval email sent to ${to}`);
   } catch (error) {
     console.error(`[Email Error] Failed to send email to ${to}:`, error);
@@ -148,8 +159,9 @@ export async function sendClassAllottedEmail({
   partnerRole: "Instructor" | "Student";
   grade?: string;
 }) {
-  if (!smtpUser || !smtpPass) {
-    console.log(`[Email Skipped] SMTP credentials missing in .env. Target: ${to}`);
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.log(`[Email Skipped] SMTP credentials missing in env. Target: ${to}`);
     return;
   }
 
@@ -189,7 +201,7 @@ export async function sendClassAllottedEmail({
   `;
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
+    await mailer.transporter.sendMail({ from: mailer.smtpFrom, to, subject, html });
     console.log(`[Email Sent] Class allotted notification sent to ${to}`);
   } catch (error) {
     console.error(`[Email Error] Failed to send email to ${to}:`, error);
@@ -208,8 +220,9 @@ export async function sendPasswordResetEmail({
   name: string;
   resetUrl: string;
 }) {
-  if (!smtpUser || !smtpPass) {
-    console.log(`[Email Skipped] SMTP credentials missing in .env. Target: ${to}`);
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.log(`[Email Skipped] SMTP credentials missing in env. Target: ${to}`);
     return;
   }
 
@@ -251,12 +264,13 @@ export async function sendPasswordResetEmail({
   `;
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
+    await mailer.transporter.sendMail({ from: mailer.smtpFrom, to, subject, html });
     console.log(`[Email Sent] Password reset email sent to ${to}`);
   } catch (error) {
     console.error(`[Email Error] Failed to send reset email to ${to}:`, error);
   }
 }
+
 /**
  * 5. Sent when Admin approves an application — user sets their own password via a link
  */
@@ -271,8 +285,9 @@ export async function sendSetPasswordEmail({
   role: "STUDENT" | "TEACHER";
   setPasswordUrl: string;
 }) {
-  if (!smtpUser || !smtpPass) {
-    console.log(`[Email Skipped] SMTP credentials missing in .env. Target: ${to}`);
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.log(`[Email Skipped] SMTP credentials missing in env. Target: ${to}`);
     return;
   }
 
@@ -319,7 +334,7 @@ export async function sendSetPasswordEmail({
   `;
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
+    await mailer.transporter.sendMail({ from: mailer.smtpFrom, to, subject, html });
     console.log(`[Email Sent] Set-password email sent to ${to}`);
   } catch (error) {
     console.error(`[Email Error] Failed to send set-password email to ${to}:`, error);
