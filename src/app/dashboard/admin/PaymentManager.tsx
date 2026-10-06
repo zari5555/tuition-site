@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toggleMonthlyPayment } from "./actions";
+import { getKarachiMonthString } from "@/lib/timezone";
 
 type Payment = {
   id: string;
@@ -23,8 +24,8 @@ type Tuition = {
 };
 
 export default function PaymentManager({ tuitions }: { tuitions: Tuition[] }) {
-  // Default to current month (YYYY-MM)
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  // Default to current month in Karachi (YYYY-MM)
+  const currentMonth = getKarachiMonthString();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   return (

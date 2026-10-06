@@ -2,24 +2,21 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { parseKarachiDateTime, getKarachiDateString } from "@/lib/timezone";
 
 export async function requestReschedule(sessionId: string, formData: FormData) {
   const startTime = formData.get("startTime") as string;
   const endTime = formData.get("endTime") as string;
+  const dateStr = formData.get("date") as string;
   const reason = formData.get("reason") as string;
   if (!startTime || !endTime) return;
 
   const session = await prisma.classSession.findUnique({ where: { id: sessionId } });
   if (!session) return;
 
-  const [startHours, startMinutes] = startTime.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.split(':').map(Number);
-
-  const proposedStart = new Date(session.date);
-  proposedStart.setHours(startHours, startMinutes, 0, 0);
-
-  const proposedEnd = new Date(session.date);
-  proposedEnd.setHours(endHours, endMinutes, 0, 0);
+  const targetDateStr = dateStr || getKarachiDateString(session.date);
+  const proposedStart = parseKarachiDateTime(targetDateStr, startTime);
+  const proposedEnd = parseKarachiDateTime(targetDateStr, endTime);
 
   await prisma.classSession.update({
     where: { id: sessionId },
@@ -32,4 +29,5 @@ export async function requestReschedule(sessionId: string, formData: FormData) {
     }
   });
   revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/teacher");
 }

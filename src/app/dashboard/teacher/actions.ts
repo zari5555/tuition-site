@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { parseKarachiDateTime } from "@/lib/timezone";
 
 export async function requestReschedule(sessionId: string, formData: FormData) {
   const startTime = formData.get("startTime") as string;
@@ -16,14 +17,8 @@ export async function requestReschedule(sessionId: string, formData: FormData) {
   });
   if (!session) return;
 
-  const [startHours, startMinutes] = startTime.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.split(':').map(Number);
-
-  const proposedStart = new Date(dateStr);
-  proposedStart.setHours(startHours, startMinutes, 0, 0);
-
-  const proposedEnd = new Date(dateStr);
-  proposedEnd.setHours(endHours, endMinutes, 0, 0);
+  const proposedStart = parseKarachiDateTime(dateStr, startTime);
+  const proposedEnd = parseKarachiDateTime(dateStr, endTime);
 
   // Check for conflicts with other scheduled sessions in the same tuition
   const hasConflict = session.tuition.sessions.some(s => {

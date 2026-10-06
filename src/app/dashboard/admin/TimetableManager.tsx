@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { generateMonthSchedule, handleRescheduleRequest, deleteSession, deleteTuition, deleteUser } from "./actions";
+import {
+  formatKarachiDate,
+  formatKarachiTime,
+  formatKarachiDateTime,
+  formatKarachiWeekday,
+  getKarachiDateString,
+} from "@/lib/timezone";
 
 type Session = {
   id: string;
@@ -137,7 +144,7 @@ export default function TimetableManager({ teachers }: { teachers: Teacher[] }) 
                       await generateMonthSchedule(selectedTuition.id, startDate, startTime, endTime, selectedDays);
                     }} className="flex flex-col gap-4">
                       <div className="flex flex-wrap gap-3 items-center">
-                        <input type="date" name="startDate" required className="glass-input rounded-xl px-3.5 py-2 text-sm text-slate-900" defaultValue={new Date().toISOString().split('T')[0]} />
+                        <input type="date" name="startDate" required className="glass-input rounded-xl px-3.5 py-2 text-sm text-slate-900" defaultValue={getKarachiDateString()} />
                         <div className="flex items-center gap-2">
                           <input type="time" name="startTime" required className="glass-input rounded-xl px-3.5 py-2 text-sm text-slate-900" title="Start Time" />
                           <span className="text-slate-500 text-sm">to</span>
@@ -167,8 +174,8 @@ export default function TimetableManager({ teachers }: { teachers: Teacher[] }) 
                       {selectedTuition.sessions.filter(s => s.rescheduleStatus === 'PENDING').map(session => (
                         <div key={session.id} className="bg-white p-4 rounded-xl border border-amber-200 flex justify-between items-center shadow-xs">
                           <div>
-                            <p className="text-xs text-slate-700 font-medium">Original: {new Date(session.date).toLocaleString()}</p>
-                            <p className="text-xs text-blue-700 font-bold mt-0.5">Proposed: {session.rescheduleProposedTime ? new Date(session.rescheduleProposedTime).toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'}) : 'N/A'} · {session.rescheduleProposedTime ? new Date(session.rescheduleProposedTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''} – {session.rescheduleProposedEndTime ? new Date(session.rescheduleProposedEndTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'N/A'}</p>
+                            <p className="text-xs text-slate-700 font-medium">Original: {formatKarachiDateTime(session.date)}</p>
+                            <p className="text-xs text-blue-700 font-bold mt-0.5">Proposed: {session.rescheduleProposedTime ? formatKarachiDate(session.rescheduleProposedTime, {weekday: 'short', month: 'short', day: 'numeric'}) : 'N/A'} · {session.rescheduleProposedTime ? formatKarachiTime(session.rescheduleProposedTime) : ''} – {session.rescheduleProposedEndTime ? formatKarachiTime(session.rescheduleProposedEndTime) : 'N/A'}</p>
                             <p className="text-xs text-slate-500 mt-1">Requested by: {session.rescheduleRequestedBy} | Reason: {session.rescheduleReason || "None"}</p>
                           </div>
                           <div className="flex gap-2">
@@ -197,12 +204,12 @@ export default function TimetableManager({ teachers }: { teachers: Teacher[] }) 
                       ) : (
                         selectedTuition.sessions.map((session) => (
                           <tr key={session.id} className="hover:bg-blue-50/30 transition-colors">
-                            <td className="py-3.5 px-4 text-xs font-bold text-blue-600">{daysOfWeek[new Date(session.date).getDay()].substring(0,3)}</td>
+                            <td className="py-3.5 px-4 text-xs font-bold text-blue-600">{formatKarachiWeekday(session.date, "short")}</td>
                             <td className="py-3.5 px-4">
                               <div className="text-sm font-semibold text-slate-900">
-                                {new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatKarachiTime(session.date)} - {formatKarachiTime(session.endTime)}
                               </div>
-                              <div className="text-xs text-slate-500 mt-0.5">{new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                              <div className="text-xs text-slate-500 mt-0.5">{formatKarachiDate(session.date, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="flex items-center justify-between gap-4">

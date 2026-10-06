@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
 import { sendSetPasswordEmail, sendClassAllottedEmail } from "@/lib/email";
+import { parseKarachiDateTime, getKarachiDayIndex } from "@/lib/timezone";
 
 /** Generates a secure token for the set-password link */
 function generateToken() {
@@ -216,10 +217,13 @@ export async function togglePaymentStatus(id: string, currentStatus: string) {
 
 export async function rescheduleClass(id: string, newDate: string) {
   if (!newDate) return;
+  const parsedDate = newDate.includes('+') || newDate.includes('Z')
+    ? new Date(newDate)
+    : new Date(`${newDate}+05:00`);
   await prisma.classSession.update({
     where: { id },
     data: {
-      date: new Date(newDate),
+      date: parsedDate,
       status: "RESCHEDULED"
     }
   });
@@ -227,28 +231,32 @@ export async function rescheduleClass(id: string, newDate: string) {
 }
 
 export async function generateMonthSchedule(tuitionId: string, startDateStr: string, startTimeStr: string, endTimeStr: string, selectedDays: number[]) {
-  const startDate = new Date(startDateStr);
-  const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
-  const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
-  
+  const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
   const sessionsToCreate = [];
 
   // Generate for 30 days starting from the given start date
   for (let i = 0; i < 30; i++) {
-    const sessionDate = new Date(startDate);
-    sessionDate.setDate(startDate.getDate() + i);
-    
-    // Only schedule if the day of week is selected
-    if (selectedDays.includes(sessionDate.getDay())) {
-      sessionDate.setHours(startHours, startMinutes, 0, 0);
-      
-      const endTime = new Date(sessionDate);
-      endTime.setHours(endHours, endMinutes, 0, 0);
-      
+    const tempUtc = new Date(Date.UTC(startYear, startMonth - 1, startDay + i, 12, 0, 0));
+    const year = tempUtc.getUTCFullYear();
+    const month = String(tempUtc.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(tempUtc.getUTCDate()).padStart(2, '0');
+    const currentDateStr = `${year}-${month}-${day}`;
+
+    // Check if the day of week in Karachi is selected
+    const dayDate = parseKarachiDateTime(currentDateStr, "12:00");
+    const dayOfWeek = getKarachiDayIndex(dayDate);
+
+    if (selectedDays.includes(dayOfWeek)) {
+      const sessionDate = parseKarachiDateTime(currentDateStr, startTimeStr);
+      let sessionEndTime = parseKarachiDateTime(currentDateStr, endTimeStr);
+      if (sessionEndTime <= sessionDate) {
+        sessionEndTime = new Date(sessionEndTime.getTime() + 24 * 60 * 60 * 1000);
+      }
+
       sessionsToCreate.push({
         tuitionId,
         date: sessionDate,
-        endTime: endTime,
+        endTime: sessionEndTime,
         status: "SCHEDULED"
       });
     }
@@ -356,3 +364,30 @@ export async function toggleMonthlyPayment(tuitionId: string, type: 'FEE' | 'SAL
 
   revalidatePath("/dashboard/admin");
 }
+
+export async function adjustExistingSessionsTimezone(shiftHours: number = -5) {
+  const shiftMs = shiftHours * 60 * 60 * 1000;
+  const sessions = await prisma.classSession.findMany();
+
+  for (const session of sessions) {
+    await prisma.classSession.update({
+      where: { id: session.id },
+      data: {
+        date: new Date(session.date.getTime() + shiftMs),
+        endTime: new Date(session.endTime.getTime() + shiftMs),
+        ...(session.rescheduleProposedTime
+          ? { rescheduleProposedTime: new Date(session.rescheduleProposedTime.getTime() + shiftMs) }
+          : {}),
+        ...(session.rescheduleProposedEndTime
+          ? { rescheduleProposedEndTime: new Date(session.rescheduleProposedEndTime.getTime() + shiftMs) }
+          : {}),
+      },
+    });
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/teacher");
+  revalidatePath("/dashboard/student");
+  return { success: true, count: sessions.length };
+}
+

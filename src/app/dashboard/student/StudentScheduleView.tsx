@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { requestReschedule } from "./actions";
+import {
+  formatKarachiDate,
+  formatKarachiTime,
+  formatKarachiWeekday,
+  getKarachiMonthString,
+  getKarachiMonthRange,
+} from "@/lib/timezone";
 
 type Session = {
   id: string;
@@ -41,8 +48,8 @@ export default function StudentScheduleView({ tuitions }: { tuitions: Tuition[] 
   const [selectedId, setSelectedId] = useState<string>(tuitions[0]?.id ?? "");
   const selected = tuitions.find(t => t.id === selectedId);
 
-  // Current month for checking payment status
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  // Current month in Karachi for checking payment status
+  const currentMonth = getKarachiMonthString();
 
   if (tuitions.length === 0) {
     return (
@@ -181,10 +188,10 @@ export default function StudentScheduleView({ tuitions }: { tuitions: Tuition[] 
                         <li key={s.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
                             <p className="text-xs font-bold text-slate-800">
-                              Original: {new Date(s.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {new Date(s.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {new Date(s.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              Original: {formatKarachiDate(s.date, { month: "short", day: "numeric" })} · {formatKarachiTime(s.date)} – {formatKarachiTime(s.endTime)}
                             </p>
                             <p className="text-xs text-amber-800 font-semibold mt-0.5">
-                              Proposed: {s.rescheduleProposedTime ? new Date(s.rescheduleProposedTime).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : ""} · {s.rescheduleProposedTime ? new Date(s.rescheduleProposedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""} – {s.rescheduleProposedEndTime ? new Date(s.rescheduleProposedEndTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}
+                              Proposed: {s.rescheduleProposedTime ? formatKarachiDate(s.rescheduleProposedTime, { weekday: "short", month: "short", day: "numeric" }) : ""} · {s.rescheduleProposedTime ? formatKarachiTime(s.rescheduleProposedTime) : ""} – {s.rescheduleProposedEndTime ? formatKarachiTime(s.rescheduleProposedEndTime) : "N/A"}
                             </p>
                             <p className="text-[10px] text-slate-500 mt-1 italic">
                               Reason: {s.rescheduleReason ? `"${s.rescheduleReason}"` : "None provided"}
@@ -214,10 +221,10 @@ export default function StudentScheduleView({ tuitions }: { tuitions: Tuition[] 
                         <li key={s.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
                             <p className="text-[10px] text-slate-500 font-medium line-through">
-                              Was: {new Date(s.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {new Date(s.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              Was: {formatKarachiDate(s.date, { month: "short", day: "numeric" })} · {formatKarachiTime(s.date)}
                             </p>
                             <p className="text-sm font-bold text-violet-900 mt-0.5">
-                              Now: {s.rescheduleProposedTime ? new Date(s.rescheduleProposedTime).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "—"} · {s.rescheduleProposedTime ? new Date(s.rescheduleProposedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""} – {s.rescheduleProposedEndTime ? new Date(s.rescheduleProposedEndTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}
+                              Now: {s.rescheduleProposedTime ? formatKarachiDate(s.rescheduleProposedTime, { weekday: "short", month: "short", day: "numeric" }) : "—"} · {s.rescheduleProposedTime ? formatKarachiTime(s.rescheduleProposedTime) : ""} – {s.rescheduleProposedEndTime ? formatKarachiTime(s.rescheduleProposedEndTime) : "N/A"}
                             </p>
                             <p className="text-[10px] text-slate-500 mt-1 italic">
                               Reason: {s.rescheduleReason ? `"${s.rescheduleReason}"` : "None provided"}
@@ -261,23 +268,21 @@ export default function StudentScheduleView({ tuitions }: { tuitions: Tuition[] 
                           <tr key={s.id} className="hover:bg-blue-50/30 transition-colors">
                             {/* Col 1: Day */}
                             <td className="py-3.5 px-4 text-xs font-bold text-blue-600 align-top pt-4">
-                              {daysOfWeek[new Date(s.date).getDay()].substring(0, 3)}
+                              {formatKarachiWeekday(s.date, "short")}
                             </td>
-
-                            {/* Col 2: Date & Time + reschedule form */}
                             <td className="py-3.5 px-4 align-top pt-4">
                               <div className="text-sm font-semibold text-slate-900">
-                                {new Date(s.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                                {formatKarachiDate(s.date, { month: "short", day: "numeric", year: "numeric" })}
                               </div>
                               <div className="text-xs text-slate-500 mt-0.5">
-                                {new Date(s.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {new Date(s.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                {formatKarachiTime(s.date)} – {formatKarachiTime(s.endTime)}
                               </div>
 
                               {s.status === "SCHEDULED" && (
                                 s.rescheduleStatus === "PENDING" ? (
                                   <div className="mt-2.5 p-2 bg-amber-50 rounded-lg border border-amber-200 inline-block w-fit">
                                     <p className="text-xs text-amber-900 font-semibold">
-                                      Reschedule req: {s.rescheduleProposedTime ? new Date(s.rescheduleProposedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""} – {s.rescheduleProposedEndTime ? new Date(s.rescheduleProposedEndTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}
+                                      Reschedule req: {s.rescheduleProposedTime ? formatKarachiTime(s.rescheduleProposedTime) : ""} – {s.rescheduleProposedEndTime ? formatKarachiTime(s.rescheduleProposedEndTime) : "N/A"}
                                     </p>
                                     <p className="text-xs text-amber-600 mt-0.5">Pending admin approval.</p>
                                   </div>
@@ -296,8 +301,8 @@ export default function StudentScheduleView({ tuitions }: { tuitions: Tuition[] 
                                           type="date"
                                           name="date"
                                           required
-                                          min={new Date(s.date).toISOString().slice(0, 8) + "01"}
-                                          max={new Date(new Date(s.date).getFullYear(), new Date(s.date).getMonth() + 1, 0).toISOString().slice(0, 10)}
+                                          min={getKarachiMonthRange(s.date).minDate}
+                                          max={getKarachiMonthRange(s.date).maxDate}
                                           className="glass-input rounded-lg px-2 py-1 text-xs w-full"
                                         />
                                       </div>

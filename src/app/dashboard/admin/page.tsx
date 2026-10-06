@@ -9,6 +9,7 @@ import GradeCategoryManager from "./GradeCategoryManager";
 import DeleteButton from "./DeleteButton";
 import CreateTuitionForm from "./CreateTuitionForm";
 import PaymentManager from "./PaymentManager";
+import { getKarachiStartOfDay, formatKarachiDateTime, formatKarachiTime } from "@/lib/timezone";
 
 const GRADES = ["Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "O Levels", "A Levels"];
 
@@ -90,7 +91,7 @@ export default async function AdminDashboard() {
   });
 
   const siteVisitsToday = await prisma.siteVisit.count({
-    where: { date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } }
+    where: { date: { gte: getKarachiStartOfDay() } }
   });
   const totalSiteVisits = await prisma.siteVisit.count();
   const visitsByCountry = await prisma.siteVisit.groupBy({
@@ -354,8 +355,8 @@ export default async function AdminDashboard() {
                         <p className="text-xs text-slate-600">Student: <span className="font-semibold text-slate-800">{session.tuition.student.name}</span></p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-1.5">
-                        <p className="text-xs text-slate-500">Original: <span className="text-slate-800 font-medium">{new Date(session.date).toLocaleString()}</span></p>
-                        <p className="text-xs text-blue-700 font-bold">Proposed: {session.rescheduleProposedTime ? new Date(session.rescheduleProposedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'} - {session.rescheduleProposedEndTime ? new Date(session.rescheduleProposedEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+                        <p className="text-xs text-slate-500">Original: <span className="text-slate-800 font-medium">{formatKarachiDateTime(session.date)}</span></p>
+                        <p className="text-xs text-blue-700 font-bold">Proposed: {session.rescheduleProposedTime ? formatKarachiTime(session.rescheduleProposedTime) : 'N/A'} - {session.rescheduleProposedEndTime ? formatKarachiTime(session.rescheduleProposedEndTime) : 'N/A'}</p>
                         <p className="text-xs text-slate-500">Reason: <span className="text-slate-700">{session.rescheduleReason || "None provided"}</span></p>
                         <p className="text-xs text-slate-500">By: <span className="capitalize text-slate-800 font-medium">{session.rescheduleRequestedBy?.toLowerCase()}</span></p>
                       </div>
